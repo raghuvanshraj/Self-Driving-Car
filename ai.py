@@ -7,6 +7,9 @@ import torch.optim as optim
 import torch.autograd as autograd
 from torch.autograd import Variable
 
+capacity = 100000
+temperature = 7
+
 
 class Network(nn.Module):
 
@@ -39,3 +42,21 @@ class ReplayMemory(object):
     def sample(self, batch_size):
         samples = zip(*random.sample(self.memory, batch_size))
         return map(lambda x: Variable(torch.cat(x, 0), samples))
+
+
+class DQN(object):
+
+    def __init__(self, input_size, nb_action, gamma):
+        self.gamma = gamma
+        self.reward_window = []
+        self.model = Network(input_size, nb_action)
+        self.memory = ReplayMemory(capacity)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=1e-2)
+        self.last_state = torch.FloatTensor().unsqueeze(0)
+        self.last_action = 0
+        self.last_reward = 0
+
+    def select_action(self, state):
+        probs = F.softmax(self.model(Variable(state, volatile=True)) * temperature)
+        action = probs.multinomial()
+        return action.data[0,0]
